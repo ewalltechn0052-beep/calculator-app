@@ -1,4 +1,4 @@
-name: Build APK on Ubuntu 22.04
+name: Build APK with pre-accepted SDK
 
 on: [push, workflow_dispatch]
 
@@ -20,16 +20,41 @@ jobs:
           sudo apt-get install -y \
             autoconf automake libtool pkg-config \
             git zip unzip openjdk-17-jdk \
-            libffi-dev libssl-dev
+            libffi-dev libssl-dev wget
 
-      - name: Install Buildozer and dependencies
+      - name: Install Buildozer
         run: |
           python -m pip install --upgrade pip
           pip install buildozer
 
+      - name: Set up Android SDK and NDK with licenses
+        run: |
+          export ANDROID_HOME=$HOME/android-sdk
+          export ANDROID_NDK_HOME=$HOME/android-ndk-r25b
+          mkdir -p $ANDROID_HOME
+
+          # Download command-line tools
+          wget -q https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O /tmp/cmdline-tools.zip
+          unzip -q /tmp/cmdline-tools.zip -d $ANDROID_HOME
+          mv $ANDROID_HOME/cmdline-tools $ANDROID_HOME/latest
+          export PATH=$ANDROID_HOME/latest/bin:$PATH
+
+          # Accept all licenses (non‑interactive)
+          yes | sdkmanager --licenses > /dev/null 2>&1
+
+          # Install platform and build-tools for API 33
+          sdkmanager "platforms;android-33" "build-tools;33.0.0" > /dev/null
+
+          # Download NDK r25b
+          wget -q https://dl.google.com/android/repository/android-ndk-r25b-linux.zip -O /tmp/ndk.zip
+          unzip -q /tmp/ndk.zip -d $HOME
+
+          echo "ANDROID_HOME=$ANDROID_HOME" >> $GITHUB_ENV
+          echo "ANDROID_NDK_HOME=$ANDROID_NDK_HOME" >> $GITHUB_ENV
+
       - name: Build APK
         run: |
-          yes | buildozer android debug
+          buildozer android debug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
