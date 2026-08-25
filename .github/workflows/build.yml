@@ -29,7 +29,7 @@ jobs:
 
       - name: Build APK
         run: |
-          buildozer android debug
+          buildozer --accept-sdk-license android debug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
